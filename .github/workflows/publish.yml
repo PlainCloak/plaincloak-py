@@ -48,7 +48,9 @@ jobs:
         run: python scripts/sync_vectors.py
 
       - name: Build
-        run: python -m build
+        run: |
+          python -m build --sdist
+          python -m build --wheel
 
       - uses: actions/upload-artifact@v4
         with:
