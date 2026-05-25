@@ -78,6 +78,10 @@ include = [
     "pyproject.toml",
 ]
 
+[tool.hatch.build.targets.sdist.force-include]
+"src/plaincloak/core/schemas" = "src/plaincloak/core/schemas"
+"tests/vectors" = "tests/vectors"
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
