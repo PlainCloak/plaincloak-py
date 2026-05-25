@@ -26,15 +26,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Sync vendored schemas and vectors
+        working-directory: plaincloak-py
+        run: python scripts/sync_vectors.py
+
       - name: Install (with extras)
         working-directory: plaincloak-py
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[keystore,dev]"
-
-      - name: Sync vendored schemas and vectors
-        working-directory: plaincloak-py
-        run: python scripts/sync_vectors.py
 
       - name: Lint (ruff)
         working-directory: plaincloak-py
@@ -69,15 +69,15 @@ jobs:
       - name: Install libzbar0
         run: sudo apt-get install -y libzbar0
 
+      - name: Sync vendored schemas and vectors
+        working-directory: plaincloak-py
+        run: python scripts/sync_vectors.py
+
       - name: Install (with qr extra)
         working-directory: plaincloak-py
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[keystore,qr,dev]"
-
-      - name: Sync vendored schemas and vectors
-        working-directory: plaincloak-py
-        run: python scripts/sync_vectors.py
 
       - name: Test QR
         working-directory: plaincloak-py
@@ -97,16 +97,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Sync vendored schemas and vectors
+        working-directory: plaincloak-py
+        run: python scripts/sync_vectors.py
+
       - name: Install (no extras)
         working-directory: plaincloak-py
         run: |
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest
-
-      - name: Sync vendored schemas and vectors
-        working-directory: plaincloak-py
-        run: python scripts/sync_vectors.py
 
       # No argon2-cffi: keygen/keystore must still work via the PBKDF2
       # fallback, and the CLI must be importable.
