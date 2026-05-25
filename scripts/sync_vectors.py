@@ -40,7 +40,10 @@ def _download_spec(dest: Path) -> Path:
     print(f"Downloading {TARBALL_URL}")
     urllib.request.urlretrieve(TARBALL_URL, tarball)  # noqa: S310
     with tarfile.open(tarball, "r:gz") as tf:
-        tf.extractall(dest, filter="data")
+        if sys.version_info >= (3, 12):
+            tf.extractall(dest, filter="data")
+        else:
+            tf.extractall(dest)  # noqa: S202
     return dest / TARBALL_PREFIX
 
 

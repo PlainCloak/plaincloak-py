@@ -100,5 +100,5 @@ module = "brotli"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["qrcode.*", "pyzbar.*"]
+module = ["qrcode.*", "pyzbar.*", "PIL.*"]
 ignore_missing_imports = true
