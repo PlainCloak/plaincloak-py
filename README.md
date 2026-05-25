@@ -1,5 +1,7 @@
 # PlainCloak
 
+[![CI](https://github.com/PlainCloak/plaincloak-py/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/PlainCloak/plaincloak-py/actions/workflows/ci.yml)
+
 Python reference implementation of the [PlainCloak v1](https://github.com/PlainCloak/plaincloak-spec) protocol: text-safe, authenticated public-key encryption you can paste into any chat app.
 
 A PlainCloak message is a single line:
