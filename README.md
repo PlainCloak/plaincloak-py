@@ -1,6 +1,8 @@
 # PlainCloak
 
 [![CI](https://github.com/PlainCloak/plaincloak-py/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/PlainCloak/plaincloak-py/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/plaincloak.svg)](https://pypi.org/project/plaincloak/)
+[![Python versions](https://img.shields.io/pypi/pyversions/plaincloak.svg)](https://pypi.org/project/plaincloak/)
 
 Python reference implementation of the [PlainCloak v1](https://github.com/PlainCloak/plaincloak-spec) protocol: text-safe, authenticated public-key encryption you can paste into any chat app.
 
