@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "cryptography>=42,<46",
-    "brotli>=1.1.0,<2",
+    "brotli>=1.2,<2",
     "jsonschema>=4.21,<5",
     "typer>=0.12,<1",
 ]

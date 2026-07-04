@@ -63,6 +63,23 @@ class TestBudget:
         with pytest.raises(DecompressedTooLargeError):
             compression.decompress(bomb, code="BR")
 
+    def test_bomb_allocation_bounded_by_budget(self) -> None:
+        # A high-ratio bomb must not allocate the full decompressed size
+        # before rejection; output is capped per process() call, so the
+        # traced peak stays near the budget instead of near the bomb size.
+        import tracemalloc
+
+        budget = 1_048_576
+        bomb = brotli.compress(b"\x00" * (32 * 1024 * 1024), quality=11)
+        tracemalloc.start()
+        try:
+            with pytest.raises(DecompressedTooLargeError):
+                compression.decompress(bomb, code="BR", budget_bytes=budget)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        assert peak < 3 * budget
+
     def test_budget_respected_for_legitimate_payload(self) -> None:
         data = b"x" * 10_000
         out = compression.compress(data, code="BR")

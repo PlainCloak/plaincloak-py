@@ -95,7 +95,16 @@ def decompress(
 
 
 def _decompress_brotli(data: bytes, *, budget_bytes: int) -> bytes:
-    """Streaming Brotli decompression with per-chunk budget enforcement.
+    """Streaming Brotli decompression with output-side budget enforcement.
+
+    Every `process()` call is capped with `output_buffer_limit` (brotli
+    >= 1.2) so the abort fires as soon as the cumulative output crosses the
+    budget, as spec section 5.4 requires. The decoder's buffer growth can
+    overshoot the limit by up to one doubling, so peak allocation for a
+    bomb is bounded by roughly twice the budget rather than the bomb's full
+    decompressed size. When the decoder holds more capped output than the
+    limit allowed, it is drained with empty input until it accepts input
+    again.
 
     Args:
         data (bytes): Brotli compressed input.
@@ -114,17 +123,22 @@ def _decompress_brotli(data: bytes, *, budget_bytes: int) -> bytes:
     view = memoryview(data)
     offset = 0
     try:
-        while offset < len(view):
-            chunk = bytes(view[offset : offset + _CHUNK_SIZE])
-            offset += _CHUNK_SIZE
-            piece = decoder.process(chunk)
-            if piece:
-                if len(out) + len(piece) > budget_bytes:
-                    raise DecompressedTooLargeError(
-                        f"decompressed output exceeded budget "
-                        f"({budget_bytes} bytes)"
-                    )
-                out.extend(piece)
+        while True:
+            if decoder.can_accept_more_data():
+                if offset >= len(view):
+                    break
+                chunk = bytes(view[offset : offset + _CHUNK_SIZE])
+                offset += _CHUNK_SIZE
+            else:
+                chunk = b""
+            limit = budget_bytes - len(out) + 1
+            piece = decoder.process(chunk, output_buffer_limit=limit)
+            if len(out) + len(piece) > budget_bytes:
+                raise DecompressedTooLargeError(
+                    f"decompressed output exceeded budget "
+                    f"({budget_bytes} bytes)"
+                )
+            out.extend(piece)
         if not decoder.is_finished():
             raise DecompressionFailedError(
                 "brotli stream ended before final block"

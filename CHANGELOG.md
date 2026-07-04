@@ -6,6 +6,19 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-04
+
+### Fixed
+
+- Decompression budget is now enforced at the output layer: each Brotli
+  `process()` call is capped with `output_buffer_limit`, so a decompression
+  bomb peaks near the 1 MiB budget instead of allocating its full
+  decompressed size before rejection (spec section 5.4).
+
+### Changed
+
+- `brotli` dependency floor raised to 1.2 (first release with `output_buffer_limit`).
+
 ## [1.0.0] - 2026-05-25
 
 Initial public release of the PlainCloak v1 Python reference implementation.
@@ -33,4 +46,5 @@ Initial public release of the PlainCloak v1 Python reference implementation.
 - Vendored spec schemas and test vectors with a CI drift check; passes
   all deterministic and verification conformance vectors.
 
+[1.0.1]: https://github.com/PlainCloak/plaincloak-py/releases/tag/v1.0.1
 [1.0.0]: https://github.com/PlainCloak/plaincloak-py/releases/tag/v1.0.0
