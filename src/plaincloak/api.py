@@ -233,12 +233,17 @@ def decrypt(
     Raises:
         MalformedWireError: For any structural failure of spec section 3.3
             steps (envelope, decompression, JSON, schema, unknown suite).
+        InvalidKeyError: If the private key matched by the body's `r` field
+            or the trusted-sender key matched by its `s` field fails the
+            section 8.2 modulus-size or public-exponent checks. Unmatched
+            keys are not validated here; the PEM loaders are the entry gate.
 
     Returns:
         DecryptResult: Outcome plus metadata; plaintext is present only for
             `verified`, `signature-invalid`, and `unknown-sender`.
     """
     senders: Mapping[str, RSAPublicKey] = trusted_senders or {}
+    private_index = _index_private_keys(own_private_keys)
 
     parsed = _parse_wire(wire)
     decompressed = compression.decompress(
@@ -270,10 +275,10 @@ def decrypt(
             recipient_key_hash=r,
         )
 
-    private_index = _index_private_keys(own_private_keys)
     recipient_private_key = private_index.get(r)
     if recipient_private_key is None:
         return _result(Outcome.WRONG_RECIPIENT, None)
+    keys.check_rsa_modulus(recipient_private_key)
 
     def _aad() -> bytes:
         return canonical.build_aad(
@@ -309,6 +314,7 @@ def decrypt(
     sender_public_key = senders.get(s)
     if sender_public_key is None:
         return _result(Outcome.UNKNOWN_SENDER, plaintext)
+    keys.check_rsa_modulus(sender_public_key)
 
     try:
         signature = base64.b64decode(g, validate=True)

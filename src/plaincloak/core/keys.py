@@ -31,7 +31,8 @@ def load_public_key(pem: str | bytes) -> RSAPublicKey:
 
     Raises:
         InvalidKeyError: If the PEM uses the PKCS#1 label, is not parseable
-            as SPKI, or is not an RSA key.
+            as SPKI, is not an RSA key, or fails the section 8.2
+            modulus-size or public-exponent checks.
 
     Returns:
         RSAPublicKey: The loaded public key.
@@ -48,6 +49,7 @@ def load_public_key(pem: str | bytes) -> RSAPublicKey:
         raise InvalidKeyError(f"could not parse SPKI public key: {exc}") from exc
     if not isinstance(key, RSAPublicKey):
         raise InvalidKeyError("public key is not an RSA key")
+    check_rsa_modulus(key)
     return key
 
 
@@ -64,7 +66,8 @@ def load_private_key(
 
     Raises:
         InvalidKeyError: If the PEM uses the PKCS#1 label, is not parseable
-            as PKCS#8, or is not an RSA key.
+            as PKCS#8, is not an RSA key, or fails the section 8.2
+            modulus-size or public-exponent checks.
 
     Returns:
         RSAPrivateKey: The loaded private key.
@@ -83,6 +86,7 @@ def load_private_key(
         ) from exc
     if not isinstance(key, RSAPrivateKey):
         raise InvalidKeyError("private key is not an RSA key")
+    check_rsa_modulus(key)
     return key
 
 

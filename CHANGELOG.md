@@ -6,6 +6,14 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Consumer-side key validation (spec section 8.2): forbidden RSA keys
+  (modulus below 2048 bits or public exponent other than 65537) are now
+  rejected by the PEM loaders, and by `decrypt` for the keys a message
+  actually matches (recipient private key via `r`, trusted sender via `s`).
+  Previously only `encrypt` validated keys.
+
 ## [1.0.1] - 2026-07-04
 
 ### Fixed
