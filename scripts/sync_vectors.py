@@ -9,7 +9,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-SPEC_REF = "4e33e7387836948bc8c449d97d1eefd89bcd8899"
+SPEC_REF = "0d567723daff9a1e16fe13b25b0b22f779399485"
 SPEC_REPO = "PlainCloak/plaincloak-spec"
 TARBALL_URL = f"https://github.com/{SPEC_REPO}/archive/{SPEC_REF}.tar.gz"
 TARBALL_PREFIX = f"plaincloak-spec-{SPEC_REF}"

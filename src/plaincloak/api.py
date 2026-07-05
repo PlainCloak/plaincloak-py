@@ -16,12 +16,20 @@ from cryptography.hazmat.primitives.asymmetric.rsa import (
 
 from plaincloak.core import body, canonical, compression, keys
 from plaincloak.core import qr as _qr
-from plaincloak.core.constants import DEFAULT_DECOMPRESS_BUDGET, WIRE_VERSION_INT
+from plaincloak.core.constants import (
+    DEFAULT_BODY_SIZE_LIMIT,
+    DEFAULT_DECOMPRESS_BUDGET,
+    WIRE_VERSION_INT,
+)
 from plaincloak.core.envelope import format_envelope
 from plaincloak.core.envelope import parse_envelope as _parse_wire
 from plaincloak.core.suites import base as suite_base
 from plaincloak.core.suites import get_suite
-from plaincloak.exceptions import InvalidBodyError, PlaintextTooLargeError
+from plaincloak.exceptions import (
+    InvalidBodyError,
+    PlaintextTooLargeError,
+    UnknownCompressionError,
+)
 from plaincloak.types import (
     DecryptResult,
     EnvelopeInfo,
@@ -32,9 +40,6 @@ from plaincloak.types import (
 
 if TYPE_CHECKING:
     from PIL.Image import Image as QRImage
-
-_BODY_SIZE_LIMIT: int = 64 * 1024  # spec section 6.5 practical cap
-
 
 def generate_keypair(bits: int = 4096) -> KeyPair:
     """Generate a fresh RSA keypair and its SPKI key hash.
@@ -113,6 +118,7 @@ def encrypt(
     suite: Suite = Suite.RSA_OAEP_AES256GCM_SHA256,
     message_id: str | None = None,
     timestamp_ms: int | None = None,
+    max_body_bytes: int = DEFAULT_BODY_SIZE_LIMIT,
 ) -> str:
     """Produce a wire message per the spec section 10.1 procedure.
 
@@ -123,16 +129,21 @@ def encrypt(
         suite (Suite): Cryptographic suite. Defaults to the hybrid suite
             (`RSA-OAEP-AES256GCM-SHA256`), which has no plaintext cap.
         message_id (str | None): Override for the body `i` field. When
-            `None`, a fresh UUIDv4 is generated. Intended for deterministic
-            tests; production callers leave it `None`.
+            `None`, a fresh UUIDv4 is generated. Deterministic-test hook
+            only: spec section 10.4 forbids producers from reusing `i`
+            across messages, so production callers MUST leave it `None`.
         timestamp_ms (int | None): Override for the body `t` field. When
             `None`, the current Unix time in milliseconds is used.
+        max_body_bytes (int): Maximum assembled body size for the hybrid
+            suite. Defaults to 64 KiB, the spec section 6.5 practical limit.
+            Deployments moving large payloads may raise it; the recipient
+            must raise its `decrypt` limits to match.
 
     Raises:
         InvalidKeyError: If either key fails the section 8.2 modulus checks.
         PlaintextTooLargeError: If the plaintext exceeds the direct suite's
-            `modulus - 66` cap, or the assembled hybrid body exceeds the
-            section 6.5 size limit.
+            `modulus - 66` cap, or the assembled hybrid body exceeds
+            `max_body_bytes`.
 
     Returns:
         str: A `PLAINCLOAK:v1:BR:<base62>` wire string.
@@ -180,10 +191,10 @@ def encrypt(
     body.validate(message_body)
 
     serialized = body.serialize(message_body)
-    if cap is None and len(serialized) > _BODY_SIZE_LIMIT:
+    if cap is None and len(serialized) > max_body_bytes:
         raise PlaintextTooLargeError(
             f"assembled body is {len(serialized)} bytes; exceeds the "
-            f"{_BODY_SIZE_LIMIT}-byte practical limit (spec section 6.5)"
+            f"{max_body_bytes}-byte body limit (spec section 6.5)"
         )
 
     compressed = compression.compress(serialized, code="BR")
@@ -213,6 +224,8 @@ def decrypt(
     own_private_keys: Sequence[RSAPrivateKey] | Mapping[str, RSAPrivateKey],
     trusted_senders: Mapping[str, RSAPublicKey] | None = None,
     decompress_budget_bytes: int = DEFAULT_DECOMPRESS_BUDGET,
+    allow_identity_compression: bool = False,
+    max_body_bytes: int = DEFAULT_BODY_SIZE_LIMIT,
 ) -> DecryptResult:
     """Consume a wire message per the spec section 10.2 procedure.
 
@@ -221,7 +234,8 @@ def decrypt(
     outcomes are returned in the `DecryptResult`, never raised.
 
     Args:
-        wire (str): Candidate wire string (already trimmed of channel noise).
+        wire (str): Candidate wire string. Trailing whitespace is tolerated;
+            any other channel noise must be trimmed by the caller.
         own_private_keys: The consumer's private keys, as a sequence or a
             mapping keyed by key hash.
         trusted_senders (Mapping[str, RSAPublicKey] | None): Trusted sender
@@ -229,6 +243,14 @@ def decrypt(
             resolves to `unknown-sender`.
         decompress_budget_bytes (int): Streaming decompression cap. Defaults
             to 1 MiB.
+        allow_identity_compression (bool): Accept the diagnostic `NO`
+            compression code. Default `False`: production traffic MUST use
+            `BR` (spec section 5.3), so identity-compressed messages are
+            refused unless this is explicitly enabled.
+        max_body_bytes (int): Maximum decompressed body size. Defaults to
+            64 KiB, the spec section 6.5 practical limit. Raise it together
+            with `decompress_budget_bytes` when accepting large payloads;
+            the budget is checked first and caps whatever this allows.
 
     Raises:
         MalformedWireError: For any structural failure of spec section 3.3
@@ -246,11 +268,22 @@ def decrypt(
     private_index = _index_private_keys(own_private_keys)
 
     parsed = _parse_wire(wire)
+    if parsed.comp_code == "NO" and not allow_identity_compression:
+        raise UnknownCompressionError(
+            "identity compression ('NO') is refused outside diagnostic "
+            "contexts (spec section 5.3); pass "
+            "allow_identity_compression=True to accept it"
+        )
     decompressed = compression.decompress(
         parsed.payload_bytes,
         code=parsed.comp_code,
         budget_bytes=decompress_budget_bytes,
     )
+    if len(decompressed) > max_body_bytes:
+        raise InvalidBodyError(
+            f"decompressed body is {len(decompressed)} bytes; exceeds the "
+            f"{max_body_bytes}-byte body limit (spec section 6.5)"
+        )
     message_body = body.parse(decompressed)
     body.validate(message_body)
 
@@ -371,14 +404,22 @@ def max_qr_wire_bytes(error_correction: str = "M") -> int:
     return _qr.max_wire_bytes(error_correction)
 
 
-def parse_envelope(wire: str) -> EnvelopeInfo:
+def parse_envelope(
+    wire: str,
+    *,
+    decompress_budget_bytes: int = DEFAULT_DECOMPRESS_BUDGET,
+) -> EnvelopeInfo:
     """Return wire metadata without performing any decryption.
 
     Runs the spec section 3.3 structural pipeline and body validation, then
-    surfaces metadata only. No private key is required or used.
+    surfaces metadata only. No private key is required or used. As a
+    diagnostic entry point, this accepts the `NO` compression code and does
+    not apply the section 6.5 body-size limit.
 
     Args:
         wire (str): Candidate wire string.
+        decompress_budget_bytes (int): Streaming decompression cap. Defaults
+            to 1 MiB.
 
     Raises:
         MalformedWireError: For any structural failure (envelope,
@@ -390,7 +431,9 @@ def parse_envelope(wire: str) -> EnvelopeInfo:
     """
     parsed = _parse_wire(wire)
     decompressed = compression.decompress(
-        parsed.payload_bytes, code=parsed.comp_code
+        parsed.payload_bytes,
+        code=parsed.comp_code,
+        budget_bytes=decompress_budget_bytes,
     )
     message_body = body.parse(decompressed)
     body.validate(message_body)

@@ -5,6 +5,7 @@ VERSION_TOKEN: str = "v1"
 WIRE_VERSION_INT: int = 1
 
 DEFAULT_DECOMPRESS_BUDGET: int = 1_048_576  # 1 MiB, spec section 5.4
+DEFAULT_BODY_SIZE_LIMIT: int = 65_536  # 64 KiB practical cap, spec section 6.5
 
 BASE62_ALPHABET: str = (
     "0123456789"

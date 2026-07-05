@@ -10,6 +10,10 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from plaincloak.api import decrypt
 from plaincloak.cli import _io
 from plaincloak.core import keys
+from plaincloak.core.constants import (
+    DEFAULT_BODY_SIZE_LIMIT,
+    DEFAULT_DECOMPRESS_BUDGET,
+)
 from plaincloak.core.keystore import Keystore
 from plaincloak.exceptions import PlainCloakError
 
@@ -40,6 +44,22 @@ def decrypt_command(
             "--password-stdin", help="Read keystore passphrase from stdin."
         ),
     ] = False,
+    max_body_bytes: Annotated[
+        int,
+        typer.Option(
+            "--max-body-bytes",
+            help="Decompressed-body size limit "
+            "(default 64 KiB per spec 6.5).",
+        ),
+    ] = DEFAULT_BODY_SIZE_LIMIT,
+    decompress_budget: Annotated[
+        int,
+        typer.Option(
+            "--decompress-budget",
+            help="Streaming decompression budget in bytes "
+            "(default 1 MiB per spec 5.4).",
+        ),
+    ] = DEFAULT_DECOMPRESS_BUDGET,
 ) -> None:
     """Decrypt a wire message and report the outcome."""
     state = ctx.obj
@@ -78,6 +98,8 @@ def decrypt_command(
             wire_text,
             own_private_keys=own_keys,
             trusted_senders=trusted,
+            max_body_bytes=max_body_bytes,
+            decompress_budget_bytes=decompress_budget,
         )
 
         if state.json_output:

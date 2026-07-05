@@ -6,6 +6,26 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `decrypt` accepts an `allow_identity_compression` flag (default `False`):
+  the diagnostic `NO` compression code is now refused in normal consumption
+  per spec section 5.3.
+- `parse_envelope` accepts `decompress_budget_bytes`, matching `decrypt`.
+- `encrypt` and `decrypt` accept `max_body_bytes` (default 64 KiB, the spec
+  section 6.5 practical limit) so deployments moving large payloads can
+  raise the body cap on both ends. Exposed on the CLI as `--max-body-bytes`;
+  `plaincloak decrypt` also gains `--decompress-budget`.
+
+### Changed
+
+- Wire parsing tolerates trailing whitespace per spec section 3.3 step 5;
+  a pasted wire ending in a newline no longer needs caller-side trimming.
+- `decrypt` rejects decompressed bodies larger than 64 KiB (spec
+  section 6.5 practical limit).
+- Vendored spec snapshot re-pinned to `0d56772` (editorial changes only;
+  schemas and test vectors unchanged).
+
 ### Fixed
 
 - Consumer-side key validation (spec section 8.2): forbidden RSA keys

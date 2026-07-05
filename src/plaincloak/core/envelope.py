@@ -46,10 +46,10 @@ def parse_envelope(wire: str) -> ParsedEnvelope:
     """Parse and validate a wire envelope per spec section 3.3.
 
     Args:
-        wire (str): Candidate wire string. Trailing whitespace and channel
-            termination MUST already be stripped by the caller; the strict
-            parser rejects any character outside the four spec-defined
-            fields.
+        wire (str): Candidate wire string. Trailing whitespace is ignored
+            per spec section 3.3 step 5 (whitespace terminates the payload).
+            Anything else outside the four spec-defined fields, including
+            leading whitespace, is rejected.
 
     Raises:
         MalformedWireError: Magic mismatch, wrong number of colons, empty
@@ -63,6 +63,7 @@ def parse_envelope(wire: str) -> ParsedEnvelope:
     """
     if not isinstance(wire, str):
         raise MalformedWireError("wire input MUST be a string")
+    wire = wire.rstrip()
     if not wire:
         raise MalformedWireError("wire input is empty")
     if not wire.isascii():

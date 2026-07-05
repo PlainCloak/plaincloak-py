@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import (
 
 from plaincloak.api import encrypt
 from plaincloak.cli import _io
+from plaincloak.core.constants import DEFAULT_BODY_SIZE_LIMIT
 from plaincloak.core.keystore import Keystore
 from plaincloak.exceptions import PlainCloakError
 from plaincloak.types import Suite
@@ -65,6 +66,14 @@ def encrypt_command(
             "--password-stdin", help="Read keystore passphrase from stdin."
         ),
     ] = False,
+    max_body_bytes: Annotated[
+        int,
+        typer.Option(
+            "--max-body-bytes",
+            help="Assembled-body size limit for the hybrid suite "
+            "(default 64 KiB per spec 6.5).",
+        ),
+    ] = DEFAULT_BODY_SIZE_LIMIT,
 ) -> None:
     """Encrypt and sign a message into a `PLAINCLOAK:v1:BR:...` string."""
     state = ctx.obj
@@ -87,6 +96,7 @@ def encrypt_command(
             recipient_public_key=recipient_public_key,
             sender_private_key=sender_private_key,
             suite=_SUITES[suite],
+            max_body_bytes=max_body_bytes,
         )
         _io.write_output(wire.encode("utf-8"), out_path)
         if out_path not in (None, "-"):

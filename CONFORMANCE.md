@@ -4,8 +4,11 @@
 
 `plaincloak-py` implements the **PlainCloak v1 core profile** in full:
 
-- Wire format and strict parser (spec sections 3, 4).
+- Wire format and strict parser (spec sections 3, 4); trailing whitespace
+  is tolerated per section 3.3 step 5.
 - Brotli compression with a streaming 1 MiB decompression budget (section 5).
+  `decrypt` refuses the diagnostic `NO` code unless explicitly enabled
+  (section 5.3) and rejects decompressed bodies over 64 KiB (section 6.5).
 - Message body and `message.schema.json` validation (section 6).
 - Canonical form for signing and the hybrid AAD (section 7).
 - Both registered v1 suites (section 8):
@@ -24,7 +27,7 @@ The vendored schemas (`src/plaincloak/core/schemas/`) and test vectors
 (`tests/vectors/v1/`) are a snapshot of `plaincloak-spec` at:
 
 ```
-4e33e7387836948bc8c449d97d1eefd89bcd8899
+0d567723daff9a1e16fe13b25b0b22f779399485
 ```
 
 `scripts/sync_vectors.py` reproduces the snapshot; `scripts/sync_vectors.py

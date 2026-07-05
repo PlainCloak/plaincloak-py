@@ -36,6 +36,12 @@ class TestParseAcceptance:
         assert parsed.comp_code == "NO"
         assert parsed.payload_bytes == b"\x01\x02\x03"
 
+    @pytest.mark.parametrize("tail", ["\n", "\r\n", " ", "\t", "  \n"])
+    def test_trailing_whitespace_tolerated(self, tail: str) -> None:
+        # Spec section 3.3 step 5: whitespace terminates the payload.
+        parsed = parse_envelope(_wire(b"\xde\xad") + tail)
+        assert parsed.payload_bytes == b"\xde\xad"
+
 
 class TestMagicAndStructure:
     """Magic, colon-count, and ASCII-only enforcement."""
@@ -101,6 +107,14 @@ class TestPayload:
     def test_payload_with_invalid_char_rejected(self) -> None:
         with pytest.raises(InvalidBase62Error):
             parse_envelope("PLAINCLOAK:v1:BR:abc+def")
+
+    def test_internal_whitespace_rejected(self) -> None:
+        with pytest.raises(InvalidBase62Error):
+            parse_envelope("PLAINCLOAK:v1:BR:abc def")
+
+    def test_leading_whitespace_rejected(self) -> None:
+        with pytest.raises(MalformedWireError):
+            parse_envelope("  PLAINCLOAK:v1:BR:abc")
 
 
 class TestFormat:
