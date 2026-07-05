@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-05
+
 ### Added
 
 - `decrypt` accepts an `allow_identity_compression` flag (default `False`):
@@ -25,6 +27,9 @@ project uses [Semantic Versioning](https://semver.org/).
   section 6.5 practical limit).
 - Vendored spec snapshot re-pinned to `0d56772` (editorial changes only;
   schemas and test vectors unchanged).
+- Wire parsing checks fields in the spec section 3.3 step order, so the
+  error category reflects the first failing step (e.g. a `v2` envelope
+  with extra colons reports `unsupported-version`, not `malformed`).
 
 ### Fixed
 
@@ -74,5 +79,6 @@ Initial public release of the PlainCloak v1 Python reference implementation.
 - Vendored spec schemas and test vectors with a CI drift check; passes
   all deterministic and verification conformance vectors.
 
+[1.1.0]: https://github.com/PlainCloak/plaincloak-py/releases/tag/v1.1.0
 [1.0.1]: https://github.com/PlainCloak/plaincloak-py/releases/tag/v1.0.1
 [1.0.0]: https://github.com/PlainCloak/plaincloak-py/releases/tag/v1.0.0

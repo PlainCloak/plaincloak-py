@@ -80,6 +80,16 @@ class TestVersionAndCompression:
         with pytest.raises(UnsupportedVersionError):
             parse_envelope(_wire(b"\x00", version="V1"))
 
+    def test_version_checked_before_payload_shape(self) -> None:
+        # Spec 3.3 order: step 3 (version) fires before the payload is
+        # examined, even when the payload has extra colons.
+        with pytest.raises(UnsupportedVersionError):
+            parse_envelope("PLAINCLOAK:v2:BR:a:b")
+
+    def test_compression_checked_before_payload_shape(self) -> None:
+        with pytest.raises(UnknownCompressionError):
+            parse_envelope("PLAINCLOAK:v1:XX:a:b")
+
     def test_reserved_zs_rejected(self) -> None:
         with pytest.raises(UnknownCompressionError):
             parse_envelope(_wire(b"\x00", comp="ZS"))

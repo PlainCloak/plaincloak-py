@@ -6,9 +6,11 @@
 
 - Wire format and strict parser (spec sections 3, 4); trailing whitespace
   is tolerated per section 3.3 step 5.
-- Brotli compression with a streaming 1 MiB decompression budget (section 5).
-  `decrypt` refuses the diagnostic `NO` code unless explicitly enabled
-  (section 5.3) and rejects decompressed bodies over 64 KiB (section 6.5).
+- Brotli compression with a streaming decompression budget of 1 MiB by
+  default, caller-configurable (section 5). `decrypt` refuses the diagnostic
+  `NO` code unless explicitly enabled (section 5.3) and rejects decompressed
+  bodies over a 64 KiB default limit, also caller-configurable
+  (section 6.5).
 - Message body and `message.schema.json` validation (section 6).
 - Canonical form for signing and the hybrid AAD (section 7).
 - Both registered v1 suites (section 8):

@@ -51,10 +51,16 @@ def parse_envelope(wire: str) -> ParsedEnvelope:
             Anything else outside the four spec-defined fields, including
             leading whitespace, is rejected.
 
+    The fields are checked in the spec section 3.3 step order (magic, then
+    version, then compression, then payload), so the error category reflects
+    the first failing step: a `v2` envelope with a garbled payload reports
+    `unsupported-version`, not `malformed`.
+
     Raises:
-        MalformedWireError: Magic mismatch, wrong number of colons, empty
-            payload, non-ASCII, or a payload character outside the Base62
-            alphabet (raised as `InvalidBase62Error`).
+        MalformedWireError: Missing colon separators, magic mismatch, or an
+            empty payload; a payload character outside the Base62 alphabet
+            (including extra colons, per section 3.5) is raised as
+            `InvalidBase62Error`.
         UnsupportedVersionError: Version token is not `v1`.
         UnknownCompressionError: Compression code is unknown or reserved.
 
@@ -66,32 +72,28 @@ def parse_envelope(wire: str) -> ParsedEnvelope:
     wire = wire.rstrip()
     if not wire:
         raise MalformedWireError("wire input is empty")
-    if not wire.isascii():
-        raise MalformedWireError("wire input contains non-ASCII characters")
 
-    parts = wire.split(":")
-    if len(parts) != 4:
-        raise MalformedWireError(
-            f"wire envelope MUST have exactly four colon-separated fields, "
-            f"got {len(parts)}"
-        )
-
-    magic, version, comp_code, payload = parts
-
+    magic, sep, rest = wire.partition(":")
+    if not sep:
+        raise MalformedWireError("wire envelope has no colon separators")
     if magic != MAGIC:
         raise MalformedWireError(
             f"magic MUST be {MAGIC!r} (case-sensitive); got {magic!r}"
         )
 
+    version, sep, rest = rest.partition(":")
+    if not sep:
+        raise MalformedWireError(
+            "wire envelope is missing the compression and payload fields"
+        )
     if version != VERSION_TOKEN:
         raise UnsupportedVersionError(
             f"version token MUST be {VERSION_TOKEN!r}; got {version!r}"
         )
 
-    if len(comp_code) != 2 or not comp_code.isascii() or not comp_code.isalpha():
-        raise UnknownCompressionError(
-            f"compression code MUST be two ASCII letters; got {comp_code!r}"
-        )
+    comp_code, sep, payload = rest.partition(":")
+    if not sep:
+        raise MalformedWireError("wire envelope is missing the payload field")
     if comp_code in CODES_RESERVED:
         raise UnknownCompressionError(
             f"compression code {comp_code!r} is reserved in v1"
